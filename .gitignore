@@ -1,0 +1,14 @@
+# Python-generated files
+__pycache__/
+*.py[oc]
+build/
+dist/
+wheels/
+*.egg-info
+
+# Virtual environments
+.venv
+.env
+public/models/blip_captioning/
+public/models/xlm-roberta-finetuned/
+public/models/git_captioning/
