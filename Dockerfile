@@ -33,6 +33,7 @@ ENV BASE_URL="http://localhost"
 ENV PORT=8080
 ENV DEBUG=True
 ENV DATABASE_URL="postgresql://postgres:Snaillyjuara_1@34.128.50.12:5432/snailly_db?sslmode=require"
+ENV API_SNAILLY=""
 
 # Jalankan aplikasi
 CMD ["uv", "run", "python", "server.py"]
