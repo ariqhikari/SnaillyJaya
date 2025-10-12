@@ -3,36 +3,77 @@ import torch
 import os
 import pandas as pd
 from transformers import AutoTokenizer, AutoModel
+import threading
+
+# --- Global State Variables untuk Lazy Loading ---
+TOKENIZER = None
+BERT_MODEL = None
+BERT_LOADED = False
+BERT_LOADING = False
+_bert_lock = threading.Lock()
 
 # --- Config ---
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 MODEL_PATH = "public/models/mixtext_bert"
 
-# --- Load BERT/MixText ---
+# --- Load BERT/MixText dengan Lazy Loading ---
 def load_bert(model_path=MODEL_PATH, hf_model="bert-base-multilingual-cased"):
     """
+    Lazy loading untuk model BERT/MixText.
     Memuat model BERT/MixText dari lokal jika ada, jika tidak unduh dari Hugging Face.
-    Return: tokenizer, model
+    
+    Returns:
+        tuple: (tokenizer, model) atau (None, None) jika gagal
     """
-    try:
-        if os.path.exists(model_path) and os.listdir(model_path):
-            print("🔄 Memuat BERT/MixText dari lokal...")
-            tokenizer = AutoTokenizer.from_pretrained(model_path)
-            model = AutoModel.from_pretrained(model_path).to(DEVICE)
-        else:
-            print("⬇️ Mengunduh BERT/MixText dari Hugging Face...")
-            tokenizer = AutoTokenizer.from_pretrained(hf_model)
-            model = AutoModel.from_pretrained(hf_model).to(DEVICE)
+    global TOKENIZER, BERT_MODEL, BERT_LOADED, BERT_LOADING
+    
+    # Jika model sudah dimuat, return langsung
+    if BERT_LOADED and TOKENIZER is not None and BERT_MODEL is not None:
+        return TOKENIZER, BERT_MODEL
+    
+    # Thread-safe loading dengan lock
+    with _bert_lock:
+        # Double-check setelah acquire lock
+        if BERT_LOADED and TOKENIZER is not None and BERT_MODEL is not None:
+            return TOKENIZER, BERT_MODEL
+        
+        if BERT_LOADING:
+            print("⏳ BERT model sedang dimuat oleh thread lain, menunggu...")
+            # Tunggu sampai loading selesai
+            while BERT_LOADING:
+                pass
+            return TOKENIZER, BERT_MODEL
+        
+        BERT_LOADING = True
+        print("🚀 Menginisialisasi BERT/MixText (Lazy Loading)...")
+        
+        try:
+            if os.path.exists(model_path) and os.listdir(model_path):
+                print("🔄 Memuat BERT/MixText dari lokal...")
+                TOKENIZER = AutoTokenizer.from_pretrained(model_path)
+                BERT_MODEL = AutoModel.from_pretrained(model_path).to(DEVICE)
+            else:
+                print("⬇️ Mengunduh BERT/MixText dari Hugging Face...")
+                TOKENIZER = AutoTokenizer.from_pretrained(hf_model)
+                BERT_MODEL = AutoModel.from_pretrained(hf_model).to(DEVICE)
 
-            # Simpan ke lokal
-            os.makedirs(model_path, exist_ok=True)
-            tokenizer.save_pretrained(model_path)
-            model.save_pretrained(model_path)
-
-        return tokenizer, model
-    except Exception as e:
-        print(f"❌ Gagal memuat BERT: {e}")
-        return None, None
+                # Simpan ke lokal
+                os.makedirs(model_path, exist_ok=True)
+                TOKENIZER.save_pretrained(model_path)
+                BERT_MODEL.save_pretrained(model_path)
+            
+            BERT_LOADED = True
+            print("✅ BERT model berhasil dimuat!")
+            return TOKENIZER, BERT_MODEL
+            
+        except Exception as e:
+            print(f"❌ Gagal memuat BERT: {e}")
+            TOKENIZER = None
+            BERT_MODEL = None
+            BERT_LOADED = False
+            return None, None
+        finally:
+            BERT_LOADING = False
 
 
 # --- Caption → Embedding ---

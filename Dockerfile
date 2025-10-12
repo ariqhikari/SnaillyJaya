@@ -19,6 +19,9 @@ COPY pyproject.toml uv.lock ./
 # Install dependencies menggunakan uv
 RUN uv sync --frozen --no-dev
 
+# Download NLTK data (simple, satu baris!)
+RUN uv run python -c "import nltk; nltk.download('stopwords'); nltk.download('punkt'); nltk.download('wordnet'); nltk.download('averaged_perceptron_tagger'); nltk.download('omw-1.4')"
+
 # Copy source code
 COPY . .
 

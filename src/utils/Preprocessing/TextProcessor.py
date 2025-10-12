@@ -5,6 +5,20 @@ from nltk.stem import WordNetLemmatizer
 from nltk.corpus import wordnet, stopwords
 from nltk import pos_tag, word_tokenize
 
+# --- Auto-download NLTK data jika belum ada (SIMPLE!) ---
+def ensure_nltk_data():
+    """Download NLTK data jika belum ada"""
+    required = ['stopwords', 'punkt', 'wordnet', 'averaged_perceptron_tagger', 'omw-1.4']
+    for item in required:
+        try:
+            nltk.data.find(f'corpora/{item}' if item in ['stopwords', 'wordnet', 'omw-1.4'] else f'tokenizers/{item}')
+        except LookupError:
+            print(f"📥 Downloading {item}...")
+            nltk.download(item, quiet=True)
+
+# Panggil saat import (auto-fix!)
+ensure_nltk_data()
+
 # --- Inisialisasi Komponen NLP (dilakukan sekali saat modul di-load) ---
 # Ini jauh lebih efisien daripada menginisialisasi di dalam fungsi setiap kali dipanggil.
 try:
@@ -16,8 +30,8 @@ try:
     STOPWORD_ALL = STOPWORD_ID.union(STOPWORD_EN)
     print("Komponen TextProcessor siap.")
 except Exception as e:
-    print(f"Gagal mengunduh data NLTK. Jalankan 'python -m nltk.downloader all' di terminal Anda. Error: {e}")
-    # Anda bisa men-download manual: punkt, stopwords, wordnet, omw-1.4, averaged_perceptron_tagger
+    print(f"❌ Error inisialisasi TextProcessor: {e}")
+    print("💡 Coba jalankan: python -m nltk.downloader stopwords punkt wordnet averaged_perceptron_tagger omw-1.4")
 
 # --- Fungsi Bantuan ---
 def get_wordnet_pos(token):
