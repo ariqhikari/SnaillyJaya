@@ -190,3 +190,9 @@ def caption_images_in_folder(
     return df
 
 
+# --- Fungsi Publik untuk Caption Satu Gambar ---
+def caption_image(image_path: str) -> str:
+    """
+    Membuat caption untuk satu gambar (wrapper publik).
+    """
+    return _generate_single_caption(image_path)

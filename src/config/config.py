@@ -1,9 +1,9 @@
 from dotenv import dotenv_values
-import os
 
 env = dotenv_values(".env")
-BASE_URL = os.environ.get('BASE_URL', 'http://localhost')
-PORT = os.environ.get('PORT', 5000)
-DEBUG = os.environ.get('DEBUG', True)
-API_SNAILLY = os.environ.get('API_SNAILLY', 'https://snailly.id')
-DATABASE_URL = os.environ.get('DATABASE_URL', 'postgresql://postgres:postgres@localhost:5433/snailly-backend')
+BASE_URL = env["BASE_URL"] or "http://localhost"
+PORT = env["PORT"] or 5000
+DEBUG = env["DEBUG"] or True
+API_SNAILLY = env["API_SNAILLY"] or "https://snailly.id"
+DATABASE_URL = env["DATABASE_URL"] or "postgresql://postgres:Snaillyjuara_1@34.142.196.84:5432/snailly_db?sslmode=require"
+

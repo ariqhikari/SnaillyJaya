@@ -12,3 +12,6 @@ wheels/
 public/models/blip_captioning/
 public/models/xlm-roberta-finetuned/
 public/models/git_captioning/
+public/screenshots
+output/
+output_vid/

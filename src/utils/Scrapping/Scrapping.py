@@ -310,4 +310,3 @@ def scrape_to_dataframe(url: str, save_images: bool = False, output_folder: str 
         if driver:
             print("Menutup WebDriver.")
             driver.quit()
-

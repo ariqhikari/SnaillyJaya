@@ -6,6 +6,7 @@ from src.services.CreateScreenshoot import ScreenshotDataService
 from src.services.PredictDataServices import PredictDataService
 from src.services.HITLServices import HITLService
 import src.utils.getResponse as Response  
+import os
 
 MainApp = Blueprint('MainApp', __name__,)
 cleanDataService =  CleanDataService()
@@ -25,28 +26,28 @@ def predict_data():
         return Response.error(result['data'],result['code'])
     return Response.success(result['data'],"success predict data")
 
-#Tambahan untuk melakukan proses hasil screenshoot
 @MainApp.route('/screenshoot', methods=['POST'])
 def screenshoot():
-    data = request.json
+    token = request.form.get('token')
+    parent_id = request.form.get('parent_id')
+    child_id = request.form.get('child_id')
+    image_file = request.files.get('image_file')
 
-    token = data.get('token')
-    parent_id = data.get('parent_id')
-    child_id = data.get('child_id')
-    image_folder = data.get('image_folder')
-
-    if not image_folder:
-        return Response.error("image_folder wajib diisi", 400)
+    if not image_file:
+        return Response.error("image_file wajib diisi", 400)
     if not token:
         return Response.error("token wajib diisi", 400)
 
-    result = screenshotService.createScreenshotData(image_folder, {
+    # Simpan file ke folder, misal 'public/screenshots'
+    save_path = os.path.join('public', 'screenshots', image_file.filename)
+    image_file.save(save_path)
+
+    result = screenshotService.createScreenshotFromFile(save_path, {
         "parent_id": parent_id,
         "child_id": child_id,
         "token": token
     })
     print(result)
-    # return Response.error("token wajib diisi", 400)
 
     if result['status'] == 'failed':
         return Response.error(result['data'], result['code'])
