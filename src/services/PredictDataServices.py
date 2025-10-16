@@ -195,11 +195,13 @@ class PredictDataService(Service):
                 return self.failedOrSuccessRequest('failed', 404, 'No text provided')
             
             #============ 1. INSERT LOG ACTIVITY TERLEBIH DAHULU =============#
-            print(f"Mengirim log ke backend untuk URL: {url}")
+            print(f"Mengirim log untuk URL: {url}")
             log_id = self.sendLog(child_id, parent_id, url)
             
             if not log_id:
-                return self.failedOrSuccessRequest('failed', 500, "Gagal mengirim log ke backend.")
+                error_msg = f"Gagal insert log_activity. child_id={child_id}, parent_id={parent_id}, url={url}"
+                print(f"❌ {error_msg}")
+                return self.failedOrSuccessRequest('failed', 500, error_msg)
             
             print(f"Log ID berhasil dibuat: {log_id}")
             

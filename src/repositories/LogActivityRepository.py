@@ -24,6 +24,10 @@ class LogActivityRepository:
             if not data.get('childId') or not data.get('url'):
                 raise ValueError("childId dan url wajib diisi")
             
+            # Debug: Check if table exists
+            print(f"📊 Creating log_activity with data: {data}")
+            print(f"📊 Database engine: {db.engine}")
+            
             new_log = log_activity(
                 childId=str(data['childId']),
                 url=str(data['url']),
@@ -31,9 +35,16 @@ class LogActivityRepository:
                 grant_access=None
             )
             
+            print(f"📊 Log object created: {new_log}")
+            
             db.session.add(new_log)
+            print(f"📊 Added to session")
+            
             db.session.commit()
+            print(f"📊 Committed to database")
+            
             db.session.refresh(new_log)
+            print(f"📊 Refreshed from database")
             
             print(f"✅ Log berhasil dibuat: {new_log.log_id}")
             return new_log
@@ -41,6 +52,8 @@ class LogActivityRepository:
         except Exception as e:
             db.session.rollback()
             print(f"❌ Error saat create log activity:")
+            print(f"❌ Error type: {type(e).__name__}")
+            print(f"❌ Error message: {str(e)}")
             traceback.print_exc()
             raise e
     
