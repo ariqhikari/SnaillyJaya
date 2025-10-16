@@ -212,31 +212,12 @@ class PredictDataService(Service):
             predicted_labels = self.svm_model.predict(X).tolist()
             predicted_proba = self.svm_model.predict_proba(X).tolist()
             
-            # ✅ PENTING: Extract label INTEGER dan probabilities
-            label_int = predicted_labels[0]  # 0 = aman, 1 = berbahaya
             proba_array = predicted_proba[0] if predicted_proba else [0.5, 0.5]  # [prob_aman, prob_berbahaya]
-            
-            # ✅ Map label ke string Indonesia
-            label_text = "aman" if label_int == 0 else "berbahaya"
-            
-            # ✅ Tentukan is_safe dan grant_access
-            # Model classes: [0, 1] → [aman, berbahaya]
-            # proba_array[0] = probabilitas aman (class 0)
-            # proba_array[1] = probabilitas berbahaya (class 1)
-            is_safe = (label_int == 0)  # True jika label = 0 (aman)
-            grant_access = is_safe       # True = diberi akses, False = ditolak
-            
-            print(f"📊 Hasil Prediksi:")
-            print(f"   - Label INT: {label_int}")
-            print(f"   - Label TEXT: {label_text}")
-            print(f"   - Probabilities: Aman={proba_array[0]:.4f}, Berbahaya={proba_array[1]:.4f}")
-            print(f"   - Is Safe: {is_safe}")
-            print(f"   - Grant Access: {grant_access}")
             
             # Simpan predict data
             predictData = predictDataRepository.createNewPredictData({
                 "text": text,
-                "label": label_int,  # Simpan sebagai INTEGER
+                "label": predicted_labels[0],
                 "predicted_proba": predicted_proba,
                 "url": url,
                 "parent_id": parent_id,
@@ -246,7 +227,7 @@ class PredictDataService(Service):
             predictDataDict = queryResultToDict([predictData])[0]
             
             #============ 3. UPDATE GRANT_ACCESS BERDASARKAN HASIL PREDIKSI =============#
-            print(f"Updating grant_access untuk log_id {log_id}: {grant_access} (label: {label_int})")
+            grant_access = True if predicted_labels[0] == 'aman' else False  
             update_success = self.updateGrantAccess(log_id, grant_access)
             
             if not update_success:
@@ -275,24 +256,23 @@ class PredictDataService(Service):
                 )
                 print(f"Prediksi per segment (combined) telah diperbarui di database untuk URL {url}.")
 
-            #============ 5. NOTIFIKASI JIKA URL BERBAHAYA DAN BARU =============#
-            existing_url_classification = urlClassificationRepository.getUrlClassificationByUrl(url)
+            #============ NOTIFIKASI URL =============#
+            existing_url_classification = urlClassificationRepository.getUrlClassificationByUrl(data.get('url', None))
             print(f"Existing URL classification: {existing_url_classification}")
-            
-            # Kirim notifikasi jika URL berbahaya (label=1) dan belum ada di database
-            if not existing_url_classification and label_int == 1:
+            if not existing_url_classification:
                 parsed = urlparse(url)
-                hostname = parsed.hostname or url
+                hostname = parsed.hostname
                 predict_id = predictDataDict.get('id', None)
-                print(f"URL {url} berbahaya dan belum ada di database, mengirim notifikasi...")
-                self.sendNotification(child_id, predict_id, parent_id, hostname, log_id)
+                print(f"Predict ID: {predict_id}")
+                print(f"{data.get('url', None)} tidak ada di database, SEND NOTIFICATION")
+                # self.sendNotification(child_id, predict_id, parent_id, hostname, log_id)
 
             # ✅ Return response dengan mapping yang benar
             return self.failedOrSuccessRequest('success', 201, {
                 "log_id": log_id,
-                "labels": label_text,           # ✅ STRING: "aman" atau "berbahaya"
-                "probabilities": proba_array,   # ✅ Array [prob_aman, prob_berbahaya]
-                "grant_access": grant_access    # ✅ Boolean: True (aman) atau False (berbahaya)
+                "labels": predicted_labels[0],
+                "probabilities": proba_array,  
+                "grant_access": grant_access   
             })
         except Exception as e:
             traceback.print_exc()
