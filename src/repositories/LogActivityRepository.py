@@ -5,6 +5,31 @@ from datetime import datetime
 import traceback
 
 class LogActivityRepository:
+    def _validate_parent_exists(self, parent_id):
+        """
+        Validasi apakah parent_id ada di tabel parents.
+        Return parent_id jika valid, None jika tidak.
+        """
+        if not parent_id:
+            return None
+        
+        try:
+            # Query langsung ke tabel parents
+            result = db.session.execute(
+                db.text("SELECT id FROM parents WHERE id = :parent_id LIMIT 1"),
+                {"parent_id": str(parent_id)}
+            ).first()
+            
+            if result:
+                print(f"✅ Parent ID valid: {parent_id}")
+                return str(parent_id)
+            else:
+                print(f"⚠️ Parent ID tidak ditemukan di database: {parent_id}, akan di-set NULL")
+                return None
+        except Exception as e:
+            print(f"⚠️ Error validasi parent_id: {e}, akan di-set NULL")
+            return None
+    
     def createLogActivity(self, data):
         """
         Insert new log_activity record
@@ -24,14 +49,18 @@ class LogActivityRepository:
             if not data.get('childId') or not data.get('url'):
                 raise ValueError("childId dan url wajib diisi")
             
+            # Validasi parent_id - set None jika tidak valid
+            validated_parent_id = self._validate_parent_exists(data.get('parentId'))
+            
             # Debug: Check if table exists
             print(f"📊 Creating log_activity with data: {data}")
+            print(f"📊 Validated parent_id: {validated_parent_id}")
             print(f"📊 Database engine: {db.engine}")
             
             new_log = log_activity(
                 childId=str(data['childId']),
                 url=str(data['url']),
-                parentId=str(data.get('parentId')) if data.get('parentId') else None,
+                parentId=validated_parent_id,
                 grant_access=None
             )
             
