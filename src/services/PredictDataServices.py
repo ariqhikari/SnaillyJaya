@@ -68,13 +68,9 @@ class PredictDataService(Service):
                 print("❌ Error: childId dan url wajib diisi")
                 return None
             
-            parsed = urlparse(url)
-            hostname = parsed.hostname or parsed.netloc or url  # fallback multiple
-            link = url  # full URL
-
             log_data = {
-                "childId": str(childId),  # Pastikan string
-                "url": link,
+                "childId": str(childId),
+                "url": str(url),
                 "parentId": str(parentId) if parentId else None,
             }
             
@@ -83,8 +79,9 @@ class PredictDataService(Service):
             new_log = logActivityRepository.createLogActivity(log_data)
             
             if new_log and hasattr(new_log, 'log_id'):
-                print(f"✅ Log berhasil dibuat dengan log_id: {new_log.log_id}")
-                return str(new_log.log_id)
+                log_id = str(new_log.log_id)
+                print(f"✅ Log berhasil dibuat dengan log_id: {log_id}")
+                return log_id
             else:
                 print("❌ Error: Log creation returned None or invalid object")
                 return None
@@ -273,10 +270,14 @@ class PredictDataService(Service):
                 print(f"URL {url} berbahaya dan belum ada di database, mengirim notifikasi...")
                 self.sendNotification(child_id, predict_id, parent_id, hostname, log_id)
 
+            # Map label to Indonesian text
+            label_text = "aman" if predicted_labels[0] == 0 else "berbahaya"
+            
             return self.failedOrSuccessRequest('success', 201, {
                 "log_id": log_id,
-                "labels": predicted_labels[0],
-                "probabilities": predicted_proba,
+                "labels": label_text,  # Ubah ke string: "aman" atau "berbahaya"
+                "label_int": predicted_labels[0],  # Tetap sediakan integer untuk backward compatibility
+                "probabilities": predicted_proba[0] if predicted_proba else [],  # Ambil array pertama
                 "grant_access": grant_access,
                 "is_safe": is_safe
             })
