@@ -14,9 +14,6 @@ class LogActivityRepository:
                 - childId (required)
                 - url (required)
                 - parentId (optional)
-                - web_title (optional)
-                - detail_url (optional)
-                - web_description (optional)
                 - grant_access (optional)
         
         Returns:
@@ -31,9 +28,6 @@ class LogActivityRepository:
                 childId=str(data['childId']),
                 url=str(data['url']),
                 parentId=str(data.get('parentId')) if data.get('parentId') else None,
-                web_title=data.get('web_title', ''),
-                detail_url=data.get('detail_url', data['url']),
-                web_description=data.get('web_description', ''),
                 grant_access=None
             )
             

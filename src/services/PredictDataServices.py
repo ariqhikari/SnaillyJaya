@@ -57,7 +57,7 @@ class PredictDataService(Service):
         self.xlm_model = None
         self.device = None
 
-    def sendLog(self, childId, parentId, url, web_title="", web_description=""):
+    def sendLog(self, childId, parentId, url):
         """
         Insert log_activity langsung ke database.
         Return log_id jika berhasil, None jika gagal.
@@ -76,9 +76,6 @@ class PredictDataService(Service):
                 "childId": str(childId),  # Pastikan string
                 "url": link,
                 "parentId": str(parentId) if parentId else None,
-                "web_title": web_title or hostname,
-                "web_description": web_description or "",
-                "detail_url": link
             }
             
             print(f"📝 Attempting to create log with data: {log_data}")
@@ -129,7 +126,6 @@ class PredictDataService(Service):
         payload = {
             "childId": childId,
             "parentId": parentId,
-            "web_title": url,
             "logId": logId,
             "predictId": str(predictId)
         }
@@ -197,15 +193,13 @@ class PredictDataService(Service):
             child_id = data.get("child_id")
             parent_id = data.get("parent_id")
             url = data.get("url")
-            web_title = data.get("web_title", "")
-            web_description = data.get("web_description", "")
 
             if not text:
                 return self.failedOrSuccessRequest('failed', 404, 'No text provided')
             
             #============ 1. INSERT LOG ACTIVITY TERLEBIH DAHULU =============#
             print(f"Mengirim log ke backend untuk URL: {url}")
-            log_id = self.sendLog(child_id, parent_id, url, web_title, web_description)
+            log_id = self.sendLog(child_id, parent_id, url)
             
             if not log_id:
                 return self.failedOrSuccessRequest('failed', 500, "Gagal mengirim log ke backend.")
