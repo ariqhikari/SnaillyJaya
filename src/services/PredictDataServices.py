@@ -199,9 +199,9 @@ class PredictDataService(Service):
             log_id = self.sendLog(child_id, parent_id, url)
             
             if not log_id:
-                error_msg = f"Gagal insert log_activity. child_id={child_id}, parent_id={parent_id}, url={url}"
+                error_msg = f"Gagal insert log_activity. child_id={child_id} TIDAK DITEMUKAN di database. User harus re-login atau data sudah dihapus."
                 print(f"❌ {error_msg}")
-                return self.failedOrSuccessRequest('failed', 500, error_msg)
+                return self.failedOrSuccessRequest('failed', 400, error_msg)
             
             print(f"Log ID berhasil dibuat: {log_id}")
             
@@ -272,13 +272,9 @@ class PredictDataService(Service):
                 print(f"URL {url} berbahaya dan belum ada di database, mengirim notifikasi...")
                 self.sendNotification(child_id, predict_id, parent_id, hostname, log_id)
 
-            # Map label to Indonesian text
-            label_text = "aman" if predicted_labels[0] == 0 else "berbahaya"
-            
             return self.failedOrSuccessRequest('success', 201, {
                 "log_id": log_id,
-                "labels": label_text,  # Ubah ke string: "aman" atau "berbahaya"
-                "label_int": predicted_labels[0],  # Tetap sediakan integer untuk backward compatibility
+                "labels": predicted_labels[0],  # Ubah ke string: "aman" atau "berbahaya"
                 "probabilities": predicted_proba[0] if predicted_proba else [],  # Ambil array pertama
                 "grant_access": grant_access,
                 "is_safe": is_safe

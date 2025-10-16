@@ -5,6 +5,31 @@ from datetime import datetime
 import traceback
 
 class LogActivityRepository:
+    def _validate_child_exists(self, child_id):
+        """
+        Validasi apakah child_id ada di tabel child.
+        Return True jika valid, False jika tidak.
+        """
+        if not child_id:
+            return False
+        
+        try:
+            # Query langsung ke tabel child
+            result = db.session.execute(
+                db.text("SELECT id FROM child WHERE id = :child_id LIMIT 1"),
+                {"child_id": str(child_id)}
+            ).first()
+            
+            if result:
+                print(f"✅ Child ID valid: {child_id}")
+                return True
+            else:
+                print(f"❌ Child ID tidak ditemukan di database: {child_id}")
+                return False
+        except Exception as e:
+            print(f"❌ Error validasi child_id: {e}")
+            return False
+    
     def _validate_parent_exists(self, parent_id):
         """
         Validasi apakah parent_id ada di tabel parents.
@@ -42,14 +67,20 @@ class LogActivityRepository:
                 - grant_access (optional)
         
         Returns:
-            log_activity: The created log_activity object
+            log_activity: The created log_activity object, or None if validation fails
         """
         try:
             # Validasi field wajib
             if not data.get('childId') or not data.get('url'):
                 raise ValueError("childId dan url wajib diisi")
             
-            # Validasi parent_id - set None jika tidak valid
+            # CRITICAL: Validasi child_id - HARUS ada di database
+            if not self._validate_child_exists(data.get('childId')):
+                print(f"❌ GAGAL: Child ID {data.get('childId')} tidak valid atau tidak ada di database")
+                print(f"❌ Request ditolak. Mobile app harus re-login atau refresh data user.")
+                return None
+            
+            # Validasi parent_id - set None jika tidak valid (nullable)
             validated_parent_id = self._validate_parent_exists(data.get('parentId'))
             
             # Debug: Check if table exists
