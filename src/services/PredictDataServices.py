@@ -62,26 +62,39 @@ class PredictDataService(Service):
         Insert log_activity langsung ke database.
         Return log_id jika berhasil, None jika gagal.
         """
-        parsed = urlparse(url)
-        hostname = parsed.hostname or url  # fallback ke url jika hostname None
-        link = url  # full URL
-
-        log_data = {
-            "childId": childId,
-            "url": link,
-            "parentId": parentId,
-            "web_title": web_title or hostname,
-            "web_description": web_description or "",
-            "detail_url": link
-        }
-        
         try:
+            # Validasi input
+            if not childId or not url:
+                print("❌ Error: childId dan url wajib diisi")
+                return None
+            
+            parsed = urlparse(url)
+            hostname = parsed.hostname or parsed.netloc or url  # fallback multiple
+            link = url  # full URL
+
+            log_data = {
+                "childId": str(childId),  # Pastikan string
+                "url": link,
+                "parentId": str(parentId) if parentId else None,
+                "web_title": web_title or hostname,
+                "web_description": web_description or "",
+                "detail_url": link
+            }
+            
+            print(f"📝 Attempting to create log with data: {log_data}")
+            
             new_log = logActivityRepository.createLogActivity(log_data)
-            print(f"Log berhasil dibuat dengan log_id: {new_log.log_id}")
-            return new_log.log_id
+            
+            if new_log and hasattr(new_log, 'log_id'):
+                print(f"✅ Log berhasil dibuat dengan log_id: {new_log.log_id}")
+                return str(new_log.log_id)
+            else:
+                print("❌ Error: Log creation returned None or invalid object")
+                return None
+                
         except Exception as e:
             traceback.print_exc()
-            print(f"Gagal membuat log: {e}")
+            print(f"❌ Gagal membuat log: {str(e)}")
             return None
 
     def updateGrantAccess(self, log_id, grant_access):
@@ -90,16 +103,24 @@ class PredictDataService(Service):
         grant_access: Boolean (True = aman, False = berbahaya)
         """
         try:
-            updated_log = logActivityRepository.updateGrantAccess(log_id, grant_access)
+            if not log_id:
+                print("❌ Error: log_id tidak boleh kosong")
+                return False
+                
+            print(f"📝 Attempting to update grant_access for log_id: {log_id} → {grant_access}")
+            
+            updated_log = logActivityRepository.updateGrantAccess(str(log_id), grant_access)
+            
             if updated_log:
-                print(f"Grant access berhasil diupdate untuk log_id {log_id}: {grant_access}")
+                print(f"✅ Grant access berhasil diupdate untuk log_id {log_id}: {grant_access}")
                 return True
             else:
-                print(f"Log dengan log_id {log_id} tidak ditemukan")
+                print(f"⚠️ Log dengan log_id {log_id} tidak ditemukan")
                 return False
+                
         except Exception as e:
             traceback.print_exc()
-            print(f"Gagal update grant_access: {e}")
+            print(f"❌ Gagal update grant_access: {str(e)}")
             return False
 
 
