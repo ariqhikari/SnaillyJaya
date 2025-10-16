@@ -59,12 +59,10 @@ def clean_data():
     url = data.get('url')
     parent_id = data.get('parent_id')
     child_id = data.get('child_id')
-    token = data.get('token')
     result = cleanDataService.createCleanData({
         "url": url,
         "parent_id": parent_id,
         "child_id": child_id,
-        "token": token
     })
     if(result['status'] == 'failed'):
         return Response.error(result['data'],result['code'])

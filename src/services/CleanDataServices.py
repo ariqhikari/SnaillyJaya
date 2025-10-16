@@ -46,7 +46,6 @@ class CleanDataService(Service):
             url = data['url']
             parent_id = data['parent_id']
             child_id = data['child_id']
-            token = data.get('token')
             
             # 1. Cek apakah URL sudah ada di database
             existing = cleanDataRepository.getCleanDataByUrl(url)
@@ -58,7 +57,6 @@ class CleanDataService(Service):
                     'url': existing_data['url'],
                     'parent_id': parent_id,
                     'child_id': child_id,
-                    'token': token
                 }
                 prediction_result = predictDataService.createPredictData(data_for_prediction)
                 if prediction_result['status'] == 'failed':
@@ -206,7 +204,6 @@ class CleanDataService(Service):
                 'url': record_dict['url'],
                 'parent_id': parent_id,
                 'child_id': child_id,
-                'token': token
             }
             
             prediction_result = predictDataService.createPredictData(data_for_prediction)

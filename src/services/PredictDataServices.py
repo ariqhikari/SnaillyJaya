@@ -1,6 +1,7 @@
 from src.repositories.PredictDataRepository import PredictDataRepository
 from src.repositories.UrlClassificationRepository import UrlClassificationRepository
 from src.repositories.CleanDataRepository import CleanDataRepository
+from src.repositories.LogActivityRepository import LogActivityRepository
 from src.config.config import API_SNAILLY
 from src.utils.convert import queryResultToDict
 from src.services.Service import Service
@@ -20,12 +21,13 @@ import warnings
 import traceback
 warnings.filterwarnings('ignore')
 import ast
-import requests
+import requests  # Masih dibutuhkan untuk sendNotification
 from urllib.parse import urlparse
 
 predictDataRepository = PredictDataRepository()
 urlClassificationRepository = UrlClassificationRepository()
 cleanDataRepository = CleanDataRepository()
+logActivityRepository = LogActivityRepository()
 
 class PredictDataService(Service):
     # =============================
@@ -55,38 +57,50 @@ class PredictDataService(Service):
         self.xlm_model = None
         self.device = None
 
-    def sendLog(self, token, childId, parentId, url, log_id=None):
-        log_url = API_SNAILLY+"/log"
-        
+    def sendLog(self, childId, parentId, url, web_title="", web_description=""):
+        """
+        Insert log_activity langsung ke database.
+        Return log_id jika berhasil, None jika gagal.
+        """
         parsed = urlparse(url)
-        hostname = parsed.hostname   # buat web_title
-        link = url                   # full URL tetap dikirim ke backend
+        hostname = parsed.hostname or url  # fallback ke url jika hostname None
+        link = url  # full URL
 
-        payload = {
+        log_data = {
             "childId": childId,
-            "url": link,                     # wajib full URL valid
+            "url": link,
             "parentId": parentId,
-            "web_title": hostname,           # hostname aja, bukan full URL
-            "web_description": "",
-            "detail_url": link               # isi dengan full URL, bukan ""
+            "web_title": web_title or hostname,
+            "web_description": web_description or "",
+            "detail_url": link
         }
-
-        headers = {
-            "Authorization": f"Bearer {token}",
-            "Content-Type": "application/json"
-        }
+        
         try:
-            res = requests.post(log_url, json=payload, headers=headers)
-            print("Response status:", res.status_code)
-            print("Response text:", res.text)  
-            res.raise_for_status()
-            data = res.json()
-            print(f"Log berhasil dikirim: {data}")
-            return data.get("data", {}).get("log_id")
+            new_log = logActivityRepository.createLogActivity(log_data)
+            print(f"Log berhasil dibuat dengan log_id: {new_log.log_id}")
+            return new_log.log_id
         except Exception as e:
             traceback.print_exc()
-            print(f"Gagal kirim log: {e}")
+            print(f"Gagal membuat log: {e}")
             return None
+
+    def updateGrantAccess(self, log_id, grant_access):
+        """
+        Update grant_access di log_activity berdasarkan hasil prediksi.
+        grant_access: Boolean (True = aman, False = berbahaya)
+        """
+        try:
+            updated_log = logActivityRepository.updateGrantAccess(log_id, grant_access)
+            if updated_log:
+                print(f"Grant access berhasil diupdate untuk log_id {log_id}: {grant_access}")
+                return True
+            else:
+                print(f"Log dengan log_id {log_id} tidak ditemukan")
+                return False
+        except Exception as e:
+            traceback.print_exc()
+            print(f"Gagal update grant_access: {e}")
+            return False
 
 
     def sendNotification(self, childId, predictId,parentId, url, logId):
@@ -157,42 +171,59 @@ class PredictDataService(Service):
         try:
             if self.svm_model is None or self.tfidf_vectorizer is None:
                 return self.failedOrSuccessRequest('failed', 500, "Model belum dimuat.")
-            token = data.get("token")
+            
             text = data.get('text', None)
             child_id = data.get("child_id")
             parent_id = data.get("parent_id")
             url = data.get("url")
+            web_title = data.get("web_title", "")
+            web_description = data.get("web_description", "")
 
             if not text:
                 return self.failedOrSuccessRequest('failed', 404, 'No text provided')
-            # log_id = self.sendLog(token, child_id, parent_id, url)
-            # print(f"Log ID: {log_id}")
-            log_id = "12345"  # Dummy log_id untuk testing tanpa API eksternal
-            print(f"Log ID: 12345 (dummy)")
-            if not log_id:
-                return self.failedOrSuccessRequest('failed', 500, "Gagal mengirim log.")
             
-            #============ PREDIKSI UNTUK TEKS FULL =============#
-            print(f"Memulai prediksi untuk teks: {text[:50]}...")  # log 50 karakter pertama
-            # Transform harus dalam bentuk list
+            #============ 1. INSERT LOG ACTIVITY TERLEBIH DAHULU =============#
+            print(f"Mengirim log ke backend untuk URL: {url}")
+            log_id = self.sendLog(child_id, parent_id, url, web_title, web_description)
+            
+            if not log_id:
+                return self.failedOrSuccessRequest('failed', 500, "Gagal mengirim log ke backend.")
+            
+            print(f"Log ID berhasil dibuat: {log_id}")
+            
+            #============ 2. PREDIKSI UNTUK TEKS FULL =============#
+            print(f"Memulai prediksi untuk teks: {text[:50]}...")
             X = self.tfidf_vectorizer.transform([text])
             
-            predicted_labels = self.svm_model.predict(X).tolist()  # ubah ke list agar JSON-serializable
+            predicted_labels = self.svm_model.predict(X).tolist()
             predicted_proba = self.svm_model.predict_proba(X).tolist()
             print(f"Prediksi untuk teks: {predicted_labels}, Probabilitas: {predicted_proba}")
-            predictData =  predictDataRepository.createNewPredictData({
+            
+            # Simpan predict data
+            predictData = predictDataRepository.createNewPredictData({
                 "text": text,
                 "label": predicted_labels[0],
                 "predicted_proba": predicted_proba,
-                "url": data.get('url', None),
-                "parent_id": data.get('parent_id', None),
-                "child_id": data.get('child_id', None),
+                "url": url,
+                "parent_id": parent_id,
+                "child_id": child_id,
                 "log_id": log_id
             })
             predictDataDict = queryResultToDict([predictData])[0]
-            # print(predictDataDict)
+            
+            #============ 3. UPDATE GRANT_ACCESS BERDASARKAN HASIL PREDIKSI =============#
+            # predicted_labels[0]: 0 = aman, 1 = berbahaya
+            # grant_access: True = aman (diberi akses), False = berbahaya (tidak diberi akses)
+            is_safe = predicted_labels[0] == 0
+            grant_access = is_safe
+            
+            print(f"Updating grant_access untuk log_id {log_id}: {grant_access} (label: {predicted_labels[0]})")
+            update_success = self.updateGrantAccess(log_id, grant_access)
+            
+            if not update_success:
+                print(f"WARNING: Gagal update grant_access untuk log_id {log_id}")
 
-            #============ PREDIKSI PER SEGMENT =============#
+            #============ 4. PREDIKSI PER SEGMENT =============#
             clean_record = cleanDataRepository.getCleanDataByUrl(url)
             if clean_record and isinstance(clean_record.segments, list) and clean_record.segments:
                 new_segments = []
@@ -215,38 +246,24 @@ class PredictDataService(Service):
                 )
                 print(f"Prediksi per segment (combined) telah diperbarui di database untuk URL {url}.")
 
-            # clean_record = cleanDataRepository.getCleanDataByUrl(url)
-            # if clean_record and isinstance(clean_record.segments, list) and clean_record.segments:
-            #     new_segments = []
-            #     for seg in clean_record.segments:
-            #         transcript = seg.get('transcript', '').strip()
-            #         if transcript == "":
-            #             seg["danger"] = "kosong"
-            #         else:
-            #             X_seg = self.tfidf_vectorizer.transform([transcript])
-            #             y_pred = self.svm_model.predict(X_seg)[0]
-            #             seg["danger"] = "bahaya" if y_pred == 1 else "aman"
-            #         new_segments.append(seg)
-
-            #     cleanDataRepository.updateCleanData(
-            #         clean_record.clean_data_id, {"segments": new_segments}
-            #     )
-            #     print(f"Prediksi per segment telah diperbarui di database untuk URL {url}.")
-
-            #============ NOTIFIKASI URL =============#
-            existing_url_classification = urlClassificationRepository.getUrlClassificationByUrl(data.get('url', None))
+            #============ 5. NOTIFIKASI JIKA URL BERBAHAYA DAN BARU =============#
+            existing_url_classification = urlClassificationRepository.getUrlClassificationByUrl(url)
             print(f"Existing URL classification: {existing_url_classification}")
-            if not existing_url_classification:
+            
+            # Kirim notifikasi jika URL berbahaya (label=1) dan belum ada di database
+            if not existing_url_classification and predicted_labels[0] == 1:
                 parsed = urlparse(url)
-                hostname = parsed.hostname
+                hostname = parsed.hostname or url
                 predict_id = predictDataDict.get('id', None)
-                print(f"Predict ID: {predict_id}")
-                print(f"{data.get('url', None)} tidak ada di database, SEND NOTIFICATION")
-                # self.sendNotification(child_id, predict_id, parent_id, hostname, log_id)
+                print(f"URL {url} berbahaya dan belum ada di database, mengirim notifikasi...")
+                self.sendNotification(child_id, predict_id, parent_id, hostname, log_id)
 
             return self.failedOrSuccessRequest('success', 201, {
+                "log_id": log_id,
                 "labels": predicted_labels[0],
-                "probabilities": predicted_proba
+                "probabilities": predicted_proba,
+                "grant_access": grant_access,
+                "is_safe": is_safe
             })
         except Exception as e:
             traceback.print_exc()
