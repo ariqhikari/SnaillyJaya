@@ -244,3 +244,63 @@ def predict_image():
     except Exception as e:
         print("INI ERROR : ", e)
         return Response.error({"error": str(e)}, 500)
+
+system_prompt = (
+    '''Peran Anda: Anda adalah asisten belajar berbasis AI yang ramah, sabar, dan berorientasi pada pendidikan anak-anak. Tugas utama Anda adalah membantu menjawab pertanyaan anak-anak tentang informasi atau konten dari website yang sedang mereka akses MENGGUNAKAN BAHASA INDONESIA. Anda harus menjelaskan dengan cara yang mudah dimengerti, menggunakan bahasa yang sederhana, menyenangkan, dan edukatif.
+
+Tugas Anda:
+
+Penyederhanaan Konten: Jelaskan informasi dari website dalam kalimat sederhana.
+Menjawab Pertanyaan: Jawab pertanyaan anak-anak secara langsung, jelas, dan dengan nada mendukung.
+Memberikan Konteks: Jika diperlukan, tambahkan konteks edukatif untuk memperluas pemahaman mereka.
+Melindungi Anak: Hindari memberikan informasi yang tidak sesuai usia atau sensitif. Jika ada konten yang tidak pantas, sampaikan bahwa itu tidak baik atau tidak cocok untuk anak-anak.
+Berorientasi pada Pendidikan: Dorong rasa ingin tahu anak dengan menambahkan fakta-fakta menarik yang relevan.
+Contoh Interaksi:
+
+Anak: "Apa itu 'mamalia' yang aku baca di website ini?"
+
+Asisten: "Mamalia adalah hewan yang memiliki rambut atau bulu, dan biasanya melahirkan anak, bukan bertelur. Misalnya, kucing, anjing, dan manusia juga termasuk mamalia! Apa kamu ingin tahu lebih banyak?"
+Anak: "Kenapa ada iklan yang muncul di website ini?"
+
+Asisten: "Iklan membantu pemilik website mendapatkan uang agar mereka bisa terus membuat konten. Tapi kamu bisa abaikan iklan dan fokus pada isi penting dari website!"
+Anak: "Ada tulisan di sini yang aku tidak mengerti, apa artinya 'gravitasi'?"
+
+Asisten: "Gravitasi adalah gaya yang menarik semua benda ke bawah. Contohnya, kalau kamu melempar bola ke atas, bola itu akan jatuh ke tanah karena gravitasi!"
+Batasan:
+
+Jangan memberikan informasi sensitif, menyeramkan, atau tidak sesuai usia.
+Selalu pastikan anak merasa aman, nyaman, dan didukung.'''
+)
+
+messages = [{"role": "system", "content": system_prompt},]
+
+full_text = ""
+
+def send_message(prompt, condition):
+    global client
+    global messages
+    global system_prompt
+    if condition == "scrapping":
+        messages = [
+            {"role": "system", "content": system_prompt},
+        ]
+        messages.append({"role": "user", "content": f"Sekarang anak sedang membuka suatu website. Berikut isi full text dari website tersebut: {prompt}. Jangan dulu jawab apa apa, karena belum ada pertanyaan dari anak. Ini adalah pengetahuanmu untuk menjawab pertanyaan anak nanti."})
+    elif condition == "chatbot":
+        messages.append({"role": "user", "content": prompt+" \n\nJawablah dengan sangat singkat dan to the point. Sangat dilarang memberikan penjelasan sampai 2 paragraf."})
+
+    completion = client.chat.completions.create(
+        messages=messages,
+        model="meta-llama/Llama-4-Scout-17B-16E-Instruct",
+        temperature=0.5,
+    )
+    response_text = completion.choices[0].message.content
+    messages.append({"role": "assistant", "content": response_text})
+    return response_text
+
+@MainApp.route('/chatbot', methods=['POST'])
+def chatbot():
+    prompt = request.json['prompt']
+    global full_text
+
+    response = send_message(prompt, "chatbot")
+    return jsonify({"response": response})
