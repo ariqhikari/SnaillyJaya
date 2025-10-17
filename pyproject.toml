@@ -11,6 +11,7 @@ dependencies = [
     "flask-migrate>=4.1.0",
     "flask-sqlalchemy>=3.1.1",
     "gdown>=5.2.0",
+    "groq>=0.11.0",
     "gunicorn>=23.0.0",
     "librosa>=0.11.0",
     "nltk>=3.9.1",
