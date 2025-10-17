@@ -1,4 +1,3 @@
-
 from flask import Blueprint
 from flask import request, g, jsonify
 from src.services.CleanDataServices import CleanDataService
@@ -31,32 +30,116 @@ def predict_data():
         return Response.error(result['data'],result['code'])
     return Response.success(result['data'],"success predict data")
 
+#Tambahan untuk melakukan proses hasil screenshoot
+
 @MainApp.route('/screenshoot', methods=['POST'])
 def screenshoot():
-    token = request.form.get('token')
-    parent_id = request.form.get('parent_id')
-    child_id = request.form.get('child_id')
-    image_file = request.files.get('image_file')
+    try:
+        image_file = request.files.get('image_file')
+        if not image_file:
+            return Response.error("image_file wajib diisi", 400)
 
-    if not image_file:
-        return Response.error("image_file wajib diisi", 400)
-    if not token:
-        return Response.error("token wajib diisi", 400)
+        # Convert file ke base64
+        import base64
+        image_bytes = image_file.read()
+        image_base64 = base64.b64encode(image_bytes).decode('utf-8')
+        # Format data:image/jpeg;base64,...
+        image_url = f"data:image/jpeg;base64,{image_base64}"
 
-    # Simpan file ke folder, misal 'public/screenshots'
-    save_path = os.path.join('public', 'screenshots', image_file.filename)
-    image_file.save(save_path)
+        global client
+        completion = client.chat.completions.create(
+            model="meta-llama/Llama-4-Scout-17B-16E-Instruct",
+            messages=[
+                {
+                    "role": "user",
+                    "content": [
+                        {
+                            "type": "text",
+                            "text": (
+                                "You are a protective parent who wants to keep children safe from harmful online content."
+                                "Your task is to analyze the image and decide if it contains any of the following: "
+                                "pornography, nudity, kissing, sexual acts, LGBT romantic or sexual content, violence, or gambling. "
+                                "If the image includes any of these, answer only with 'berbahaya'. "
+                                "If the image does not include any of these, answer only with 'aman'."
+                            )#"Is this image related to porn or adult content? If it is porn or adult content, answer with 'porn' only; if it is not porn, answer with 'np'"
+                        },
+                        {
+                            "type": "image_url",
+                            "image_url": {
+                                "url": image_url
+                            }
+                        }
+                    ]
+                }
+            ],
+            temperature=0.1,
+            max_tokens=3,
+            top_p=1,
+            stream=False,
+            stop=None,
+        )
 
-    result = screenshotService.createScreenshotFromFile(save_path, {
-        "parent_id": parent_id,
-        "child_id": child_id,
-        "token": token
-    })
-    print(result)
+        # Mengubah teks menjadi lowercase
+        import re
+        text = completion.choices[0].message.content.lower()
+        # Menghapus tanda baca menggunakan regex
+        text = re.sub(r'[^\w\s]', '', text)
+        # return jsonify({"hasil": text})
+        return Response.success({"label": text}, "success predict image")
+    except Exception as e:
+        print("INI ERROR : ", e)
+        return Response.error({"error": str(e)}, 500)
 
-    if result['status'] == 'failed':
-        return Response.error(result['data'], result['code'])
-    return Response.success(result['data'], "success screenshoot")
+
+# @MainApp.route('/screenshoot', methods=['POST'])
+# def screenshoot():
+#     data = request.json
+# @MainApp.route('/screenshoot', methods=['POST'])
+# def screenshoot():
+#     token = request.form.get('token')
+#     parent_id = request.form.get('parent_id')
+#     child_id = request.form.get('child_id')
+#     image_file = request.files.get('image_file')
+
+#     if not image_file:
+#         return Response.error("image_file wajib diisi", 400)
+#     if not token:
+#         return Response.error("token wajib diisi", 400)
+
+#     # Simpan file ke folder, misal 'public/screenshots'
+#     save_path = os.path.join('public', 'screenshots', image_file.filename)
+#     image_file.save(save_path)
+
+#     result = screenshotService.createScreenshotFromFile(save_path, {
+#         "parent_id": parent_id,
+#         "child_id": child_id,
+#         "token": token
+#     })
+#     print(result)
+
+#     if result['status'] == 'failed':
+#         return Response.error(result['data'], result['code'])
+#     return Response.success(result['data'], "success screenshoot")
+#     token = data.get('token')
+#     parent_id = data.get('parent_id')
+#     child_id = data.get('child_id')
+#     image_path = data.get('image_path')
+
+#     if not image_path:
+#         return Response.error("image_path wajib diisi", 400)
+#     if not token:
+#         return Response.error("token wajib diisi", 400)
+
+#     result = screenshotService.createScreenshotFromFile(image_path, {
+#         "parent_id": parent_id,
+#         "child_id": child_id,
+#         "token": token
+#     })
+#     print(result)
+
+#     if result['status'] == 'failed':
+#         return Response.error(result['data'], result['code'])
+#     return Response.success(result['data'], "success screenshoot")
                
 @MainApp.route('/scrapping', methods=['POST'])
 def clean_data():
@@ -64,10 +147,12 @@ def clean_data():
     url = data.get('url')
     parent_id = data.get('parent_id')
     child_id = data.get('child_id')
+    token = data.get('token')
     result = cleanDataService.createCleanData({
         "url": url,
         "parent_id": parent_id,
         "child_id": child_id,
+        "token": token
     })
     if(result['status'] == 'failed'):
         return Response.error(result['data'],result['code'])
@@ -127,7 +212,13 @@ def predict_image():
                     "content": [
                         {
                             "type": "text",
-                            "text": "Is this image related to porn or adult content? If it is porn or adult content, answer with 'porn' only; if it is not porn, answer with 'np'"
+                             "text": (
+                                "You are a protective parent who wants to keep children safe from harmful online content."
+                                "Your task is to analyze the image and decide if it contains any of the following: "
+                                "pornography, nudity, kissing, sexual acts, LGBT romantic or sexual content, violence, or gambling. "
+                                "If the image includes any of these, answer only with 'berbahaya'. "
+                                "If the image does not include any of these, answer only with 'aman'."
+                            )#"Is this image related to porn or adult content? If it is porn or adult content, answer with 'porn' only; if it is not porn, answer with 'np'"
                         },
                         {
                             "type": "image_url",
@@ -149,7 +240,7 @@ def predict_image():
         text = completion.choices[0].message.content.lower()
         # Menghapus tanda baca menggunakan regex
         text = re.sub(r'[^\w\s]', '', text)
-        return jsonify({"hasil": text})
+        return Response.success({"label": text}, "success predict image")
     except Exception as e:
         print("INI ERROR : ", e)
-        return jsonify({"error": str(e)}), 500
+        return Response.error({"error": str(e)}, 500)
