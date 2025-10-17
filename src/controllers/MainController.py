@@ -16,7 +16,7 @@ screenshotService = ScreenshotDataService()
 predictDataService = PredictDataService()
 hitlService = HITLService()
 
-client = Groq(api_key="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")
+client = Groq(api_key=os.getenv("GROQ_API_KEY"))
 
 @MainApp.route('/test', methods=['POST'])
 def test():
