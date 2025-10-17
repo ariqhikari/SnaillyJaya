@@ -120,7 +120,7 @@ def predict_image():
         
         global client
         completion = client.chat.completions.create(
-            model="llama-3.2-90b-vision-preview",
+            model="meta-llama/Llama-4-Scout-17B-16E-Instruct",
             messages=[
                 {
                     "role": "user",
