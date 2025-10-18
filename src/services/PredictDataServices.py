@@ -124,10 +124,6 @@ class PredictDataService(Service):
             "childId": childId,
             "parentId": parentId,
             "logId": logId,
-            # "predictId": str(predictId)
-            "url": url,
-            "title": title,
-            "text": text
         }
         print(f"Payload Send Notification {payload}")
         headers = {"Content-Type": "application/json"}

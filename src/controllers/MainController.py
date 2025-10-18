@@ -104,7 +104,7 @@ def screenshoot():
                     predictId=None,  # Screenshot tidak punya predict_id
                     parentId=parent_id if parent_id else None,
                     url="Screenshot Image",  # Placeholder untuk screenshot
-                    logId=None,  # Screenshot tidak punya log_id
+                    logId="0321f946-8a7c-4a72-8943-b974ad087ee2",  # Screenshot tidak punya log_id
                     title="Screenshot Berbahaya Terdeteksi!",
                     text="Screenshot yang diambil mengandung konten berbahaya."
                 )
