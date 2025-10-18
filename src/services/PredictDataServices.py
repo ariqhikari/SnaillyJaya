@@ -118,13 +118,16 @@ class PredictDataService(Service):
             return False
 
 
-    def sendNotification(self, childId, predictId,parentId, url, logId, title, text):
+    def sendNotification(self, childId, predictId,parentId, url, logId):
         notif_url = "https://snailly-backend.codelabspace.or.id/notification/send"
         payload = {
             "childId": childId,
             "parentId": parentId,
-            "logId": logId,
         }
+
+        if(logId is not None):
+            payload["logId"] = logId
+
         print(f"Payload Send Notification {payload}")
         headers = {"Content-Type": "application/json"}
 
