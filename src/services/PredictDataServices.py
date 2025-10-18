@@ -124,7 +124,8 @@ class PredictDataService(Service):
             "childId": childId,
             "parentId": parentId,
             "logId": logId,
-            "predictId": str(predictId)
+            # "predictId": str(predictId)
+            "url": url
         }
         print(f"Payload Send Notification {payload}")
         headers = {"Content-Type": "application/json"}
@@ -265,7 +266,7 @@ class PredictDataService(Service):
                 predict_id = predictDataDict.get('id', None)
                 print(f"Predict ID: {predict_id}")
                 print(f"{data.get('url', None)} tidak ada di database, SEND NOTIFICATION")
-                # self.sendNotification(child_id, predict_id, parent_id, hostname, log_id)
+                self.sendNotification(child_id, predict_id, parent_id, hostname, log_id)
 
             # ✅ Return response dengan mapping yang benar
             return self.failedOrSuccessRequest('success', 201, {

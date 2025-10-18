@@ -35,9 +35,15 @@ def predict_data():
 @MainApp.route('/screenshoot', methods=['POST'])
 def screenshoot():
     try:
+        # Get form data
         image_file = request.files.get('image_file')
+        child_id = request.form.get('child_id')
+        parent_id = request.form.get('parent_id')
+        
         if not image_file:
             return Response.error("image_file wajib diisi", 400)
+        if not child_id:
+            return Response.error("child_id wajib diisi", 400)
 
         # Convert file ke base64
         import base64
@@ -45,6 +51,8 @@ def screenshoot():
         image_base64 = base64.b64encode(image_bytes).decode('utf-8')
         # Format data:image/jpeg;base64,...
         image_url = f"data:image/jpeg;base64,{image_base64}"
+
+        print(f"📸 Processing screenshot for child_id: {child_id}")
 
         global client
         completion = client.chat.completions.create(
@@ -61,7 +69,7 @@ def screenshoot():
                                 "pornography, nudity, kissing, sexual acts, LGBT romantic or sexual content, violence, or gambling. "
                                 "If the image includes any of these, answer only with 'berbahaya'. "
                                 "If the image does not include any of these, answer only with 'aman'."
-                            )#"Is this image related to porn or adult content? If it is porn or adult content, answer with 'porn' only; if it is not porn, answer with 'np'"
+                            )
                         },
                         {
                             "type": "image_url",
@@ -80,14 +88,34 @@ def screenshoot():
         )
 
         # Mengubah teks menjadi lowercase
-        import re
         text = completion.choices[0].message.content.lower()
         # Menghapus tanda baca menggunakan regex
         text = re.sub(r'[^\w\s]', '', text)
-        # return jsonify({"hasil": text})
+        
+        print(f"📊 Screenshot prediction result: {text}")
+        
+        # ✅ SEND NOTIFICATION jika gambar berbahaya
+        if text == "berbahaya":
+            print(f"⚠️ Screenshot berbahaya terdeteksi! Mengirim notifikasi...")
+            try:
+                # Panggil sendNotification dari PredictDataService
+                predictDataService.sendNotification(
+                    childId=child_id,
+                    predictId=None,  # Screenshot tidak punya predict_id
+                    parentId=parent_id if parent_id else None,
+                    url="Screenshot Image",  # Placeholder untuk screenshot
+                    logId=None  # Screenshot tidak punya log_id
+                )
+                print(f"✅ Notifikasi berhasil dikirim untuk child_id: {child_id}")
+            except Exception as notif_error:
+                print(f"❌ Gagal kirim notifikasi: {notif_error}")
+                # Tetap lanjutkan response meskipun notifikasi gagal
+        
         return Response.success({"label": text}, "success predict image")
     except Exception as e:
         print("INI ERROR : ", e)
+        import traceback
+        traceback.print_exc()
         return Response.error({"error": str(e)}, 500)
 
 
