@@ -101,8 +101,10 @@ def screenshoot():
                 # Panggil sendNotification dari PredictDataService
                 predictDataService.sendNotification(
                     childId=child_id,
-                    predictId=None,  # Screenshot tidak punya predict_id
-                    parentId=parent_id
+                    predictId=None, 
+                    parentId=parent_id,
+                    url=None,
+                    logId=None 
                 )
                 print(f"✅ Notifikasi berhasil dikirim untuk child_id: {child_id}")
             except Exception as notif_error:
