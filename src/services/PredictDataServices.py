@@ -118,14 +118,16 @@ class PredictDataService(Service):
             return False
 
 
-    def sendNotification(self, childId, predictId,parentId, url, logId):
+    def sendNotification(self, childId, predictId,parentId, url, logId, title, text):
         notif_url = API_SNAILLY+"/notification/send"
         payload = {
             "childId": childId,
             "parentId": parentId,
             "logId": logId,
             # "predictId": str(predictId)
-            "url": url
+            "url": url,
+            "title": title,
+            "text": text
         }
         print(f"Payload Send Notification {payload}")
         headers = {"Content-Type": "application/json"}
@@ -266,7 +268,7 @@ class PredictDataService(Service):
                 predict_id = predictDataDict.get('id', None)
                 print(f"Predict ID: {predict_id}")
                 print(f"{data.get('url', None)} tidak ada di database, SEND NOTIFICATION")
-                self.sendNotification(child_id, predict_id, parent_id, hostname, log_id)
+                self.sendNotification(child_id, predict_id, parent_id, hostname, log_id, "Website Berbahaya Terdeteksi!", f"Website yang diakses mengandung konten berbahaya. URL: {url}")
 
             # ✅ Return response dengan mapping yang benar
             return self.failedOrSuccessRequest('success', 201, {
