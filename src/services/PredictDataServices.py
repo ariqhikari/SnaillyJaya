@@ -267,7 +267,13 @@ class PredictDataService(Service):
                 predict_id = predictDataDict.get('id', None)
                 print(f"Predict ID: {predict_id}")
                 print(f"{data.get('url', None)} tidak ada di database, SEND NOTIFICATION")
-                self.sendNotification(child_id, predict_id, parent_id, hostname, log_id, "Website Berbahaya Terdeteksi!", f"Website yang diakses mengandung konten berbahaya. URL: {url}")
+                self.sendNotification(
+                    childId=child_id, 
+                    predictId=predict_id,
+                    parentId=parent_id,
+                    url=hostname,
+                    logId=log_id
+                )
 
             # ✅ Return response dengan mapping yang benar
             return self.failedOrSuccessRequest('success', 201, {
