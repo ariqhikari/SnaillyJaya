@@ -119,7 +119,7 @@ class PredictDataService(Service):
 
 
     def sendNotification(self, childId, predictId,parentId, url, logId, title, text):
-        notif_url = API_SNAILLY+"/notification/send"
+        notif_url = "https://snailly-backend.codelabspace.or.id/notification/send"
         payload = {
             "childId": childId,
             "parentId": parentId,
