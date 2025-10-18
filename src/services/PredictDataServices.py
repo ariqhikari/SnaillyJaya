@@ -267,13 +267,13 @@ class PredictDataService(Service):
                 predict_id = predictDataDict.get('id', None)
                 print(f"Predict ID: {predict_id}")
                 print(f"{data.get('url', None)} tidak ada di database, SEND NOTIFICATION")
-                self.sendNotification(
-                    childId=child_id, 
-                    predictId=predict_id,
-                    parentId=parent_id,
-                    url=hostname,
-                    logId=log_id
-                )
+                # self.sendNotification(
+                #     childId=child_id, 
+                #     predictId=predict_id,
+                #     parentId=parent_id,
+                #     url=hostname,
+                #     logId=log_id
+                # )
 
             # ✅ Return response dengan mapping yang benar
             return self.failedOrSuccessRequest('success', 201, {
